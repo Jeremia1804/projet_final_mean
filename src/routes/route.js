@@ -1,15 +1,7 @@
 const express = require('express')
-const verifyToken = require('../middlewares/authMiddleware');
 // const { getAccessToken, makePayment, checkPaymentStatus, initiateTransaction, getTransactionDetails, getTransactionStatus} = require('../api/mvola')
 // const payment = require('../api/mvola-api')
 const router = express.Router();
-
-router.get('/health-check', (req, res) => res.send('OK'));
-
-router.get("/", function (req, res){
-    res.setHeader("Content-type", "text/plain")
-    res.send("Start server successfuly")
-})
 
 // router.get("/get_access_token", async function (req, res){
 //     res.setHeader("Content-type", "text/plain")
@@ -36,10 +28,5 @@ router.get("/", function (req, res){
 // //    await payment()
 //    res.send("VItA")
 // })
-
-// Protected route
-router.get('/verify', verifyToken, (req, res) => {
-    res.status(200).json({ message: 'Protected route accessed' });
-});
 
 module.exports = router;

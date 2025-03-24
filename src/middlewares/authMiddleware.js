@@ -6,11 +6,20 @@ function verifyToken(req, res, next) {
   if (!token) return res.status(401).json({ error: "Access denied" });
   try {
     const decoded = jwt.verify(token, config.jwtSecret);
-    req.userId = decoded.userId;
+    req.user = decoded;
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid token" });
   }
 }
 
-module.exports = verifyToken;
+const checkRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: "Access denied. Unauthorized role." });
+    }
+    next();
+  };
+};
+
+module.exports = { verifyToken, checkRole };
