@@ -103,9 +103,12 @@ router.delete("/models/:id", verifyToken, checkRole("ADMIN"), async (req, res) =
 
 // CRUD VOITURE (Car)
 
-router.post("/cars", verifyToken, async (req, res) => {
+router.post("/cars", verifyToken, checkRole("USER"), async (req, res) => {
   try {
-    const car = new CarModel(req.body);
+    const car = new CarModel({
+      ...req.body,
+      owner: req.user.userId,
+    });
     await car.save();
     res.status(201).json(car);
   } catch (error) {
@@ -113,19 +116,30 @@ router.post("/cars", verifyToken, async (req, res) => {
   }
 });
 
-router.get("/cars", verifyToken, checkRole("ADMIN"), async (req, res) => {
+router.get("/cars", verifyToken, checkRole(["ADMIN","MECA", "USER"]), async (req, res) => {
   try {
-    const cars = await CarModel.find().populate("owner model");
+    let cars;
+
+    if (["ADMIN", "MECA"].includes(req.user.role)) {
+      cars = await CarModel.find().populate("owner model");
+    } else {
+      cars = await CarModel.find({ owner: req.user.userId }).populate("owner model");
+    }
     res.json(cars);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get("/cars/:id", async (req, res) => {
+
+router.get("/cars/:id",verifyToken, checkRole(["ADMIN","MECA", "USER"]), async (req, res) => {
   try {
-    const car = await CarModel.findById(req.params.id).populate("owner model");
-    if (!car) return res.status(404).json({ error: "Car not found" });
+    let car;
+    if (["ADMIN", "MECA"].includes(req.user.role)) {
+      car = await CarModel.findById(req.params.id).populate("owner model");
+    } else {
+      car = await CarModel.findOne({ _id: req.params.id, owner: req.user.userId }).populate("owner model");
+    }
     res.json(car);
   } catch (error) {
     res.status(500).json({ error: error.message });
