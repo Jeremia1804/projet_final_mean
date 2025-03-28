@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const { ServiceModel, CategoryServiceModel } = require("../models/service");
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware')
+const multer = require('multer');
+const XLSX = require('xlsx');
+const fs = require('fs');
+const upload = multer({ dest: 'uploads/' });
+const path = require("path");
 
 router.post("/services",verifyToken, checkRole("ADMIN"), async (req, res) => {
   try {
@@ -77,18 +82,6 @@ router.get("/categories", async (req, res) => {
   }
 });
 
-router.get("/categories/:id", async (req, res) => {
-  try {
-    const category = await CategoryServiceModel.findById(req.params.id);
-    if (!category) {
-      return res.status(404).json({ error: "Category not found" });
-    }
-    res.status(200).json(category);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch category", details: error.message });
-  }
-});
-
 router.put("/categories/:id", verifyToken, checkRole("ADMIN"), async (req, res) => {
   try {
     const category = await CategoryServiceModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -110,6 +103,90 @@ router.delete("/categories/:id", verifyToken, checkRole("ADMIN"), async (req, re
     res.status(200).json({ message: "Category deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete category", details: error.message });
+  }
+});
+
+
+router.post('/categories/import', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const workbook = XLSX.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+    fs.unlinkSync(filePath);
+
+    const result = await CategoryServiceModel.importData(jsonData);
+
+    res.status(200).json({ message: "File processed successfully", jsonData });
+});
+
+
+router.post('/services/import', upload.single('file'), (req, res) => {
+  if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const filePath = req.file.path;
+  const workbook = XLSX.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+  fs.unlinkSync(filePath);
+
+  res.status(200).json({ message: 'File processed successfully', data: jsonData });
+});
+
+router.get("/categories/export", async (req, res) => {
+  try {
+      const categories = await CategoryServiceModel.find();
+
+      if (categories.length === 0) {
+          return res.status(404).json({ error: "No categories found" });
+      }
+
+      const jsonData = categories.map(cat => ({
+          id: cat._id.toString(),
+          name: cat.name,
+          description: cat.description || "",
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(jsonData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
+
+      const filePath = path.join(__dirname, "categories_export.xlsx");
+
+      XLSX.writeFile(workbook, filePath);
+
+      res.download(filePath, "categories_export.xlsx", (err) => {
+          if (err) {
+              console.error("Error sending file:", err);
+              res.status(500).json({ error: "Failed to send file" });
+          }
+
+          fs.unlinkSync(filePath);
+      });
+
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/categories/:id", async (req, res) => {
+  try {
+    const category = await CategoryServiceModel.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch category", details: error.message });
   }
 });
 
