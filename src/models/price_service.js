@@ -17,6 +17,7 @@ const PriceSchema = new mongoose.Schema(
       required: true,
       min: [0, "Price must be greater than 0"]
     },
+    active: { type: Boolean, default: true }
   },
   { timestamps: true }
 );

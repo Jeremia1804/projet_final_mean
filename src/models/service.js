@@ -49,6 +49,7 @@ const serviceSchema = new mongoose.Schema({
   category_id: { type: mongoose.Schema.Types.ObjectId, ref: "CategoryService", required: true },
   standard_price: { type: Number, required: true },
   img: { type: String, required: false },
+  active: { type: Boolean, default: true }
 });
 
 class ServiceModel extends mongoose.model("Service", serviceSchema) {}

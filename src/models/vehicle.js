@@ -4,6 +4,7 @@ const brandSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   country: { type: String },
   foundedYear: { type: Number },
+  active: { type: Boolean, default: true }
 });
 
 const BrandModel = mongoose.model("Brand", brandSchema);
@@ -14,6 +15,7 @@ const modelSchema = new mongoose.Schema({
   fuelType: { type: String, enum: ["Essence", "Diesel", "Électrique", "Hybride"], required: true },
   horsepower: { type: Number, required: true },
   year: { type: Number, required: true },
+  active: { type: Boolean, default: true }
 });
 
 const ModelModel = mongoose.model("Model", modelSchema);
@@ -24,6 +26,7 @@ const carSchema = new mongoose.Schema({
   registrationNumber: { type: String, required: true, unique: true },
   color: { type: String },
   mileage: { type: Number },
+  active: { type: Boolean, default: true }
 });
 
 const CarModel = mongoose.model("Car", carSchema);
