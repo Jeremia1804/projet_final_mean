@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { ServiceModel, CategoryServiceModel } = require("../models/service");
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware')
+const { importXLSX, exportXLSX } = require('../utils/xlsx.service')
 const multer = require('multer');
 const XLSX = require('xlsx');
 const fs = require('fs');
@@ -113,33 +114,11 @@ router.post('/categories/import', upload.single('file'), async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-    fs.unlinkSync(filePath);
+    const jsonData = importXLSX(filePath)
 
     const result = await CategoryServiceModel.importData(jsonData);
 
-    res.status(200).json({ message: "File processed successfully", jsonData });
-});
-
-
-router.post('/services/import', upload.single('file'), (req, res) => {
-  if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  const filePath = req.file.path;
-  const workbook = XLSX.readFile(filePath);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-  fs.unlinkSync(filePath);
-
-  res.status(200).json({ message: 'File processed successfully', data: jsonData });
+    res.status(200).json({ message: "File processed successfully",  });
 });
 
 router.get("/categories/export", async (req, res) => {
@@ -149,28 +128,21 @@ router.get("/categories/export", async (req, res) => {
       if (categories.length === 0) {
           return res.status(404).json({ error: "No categories found" });
       }
-
       const jsonData = categories.map(cat => ({
           id: cat._id.toString(),
           name: cat.name,
           description: cat.description || "",
       }));
 
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(jsonData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
-
-      const filePath = path.join(__dirname, "categories_export.xlsx");
-
-      XLSX.writeFile(workbook, filePath);
-
-      res.download(filePath, "categories_export.xlsx", (err) => {
+      const filename = "categories_export"
+      let filePath = await exportXLSX(jsonData, filename, "Categories")
+      res.download(filePath, `${filename}.xlsx`, (err) => {
           if (err) {
               console.error("Error sending file:", err);
               res.status(500).json({ error: "Failed to send file" });
           }
 
-          fs.unlinkSync(filePath);
+      fs.unlinkSync(filePath);
       });
 
   } catch (error) {
