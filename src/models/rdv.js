@@ -28,7 +28,11 @@ const RdvSchema = new mongoose.Schema({
   active: { 
     type: Boolean, 
     default: true 
-  }
+  },
+  assignedMechanic: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "users" 
+  },
 },  {  timestamps: true,
       toJSON: { virtuals: true }, 
       toObject: { virtuals: true }  
