@@ -36,6 +36,15 @@ router.get("/rdvs", verifyToken, checkRole("ADMIN"), async (req, res) => {
     }
 });
 
+router.get("/rdvs/me", verifyToken, checkRole("USER"), async (req, res) => {
+  try {
+      const rdvs = await RdvModel.find({ customer: req.user.userId }).populate("car services");
+      res.status(200).json(rdvs);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
 
 router.patch("/rdvs/:id/cancel", verifyToken, checkRole(["USER", "ADMIN"]), async (req, res) => {
   try {
@@ -62,14 +71,68 @@ router.patch("/rdvs/:id/cancel", verifyToken, checkRole(["USER", "ADMIN"]), asyn
   }
 });
 
+router.patch("/rdvs/:id/confirm", verifyToken, checkRole(["ADMIN"]), async (req, res) => {
+  try {
+      const rdv = await RdvModel.findById(req.params.id);
+      
+      if (!rdv) {
+          return res.status(404).json({ error: "Rendez-vous non trouvé" });
+      }
+      if (rdv.state !== "draft") {
+          return res.status(400).json({ error: "Le rendez-vous doit être dans l'état 'draft' pour être confirmé" });
+      }
+      
+      rdv.state = "confirmed";
+      await rdv.save();
+      
+      res.status(200).json({ message: "Rendez-vous confirmé avec succès", rdv });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
 
-router.get("/rdvs/me", verifyToken, checkRole("USER"), async (req, res) => {
-    try {
-        const rdvs = await RdvModel.find({ customer: req.user.userId }).populate("car services");
-        res.status(200).json(rdvs);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+
+router.patch("/rdvs/:id/progress", verifyToken, checkRole(["ADMIN", "MECA"]), async (req, res) => {
+  try {
+      const rdv = await RdvModel.findById(req.params.id);
+      
+      if (!rdv) {
+          return res.status(404).json({ error: "Rendez-vous non trouvé" });
+      }
+      
+      if (rdv.state !== "confirmed") {
+          return res.status(400).json({ error: "Le rendez-vous doit être dans l'état 'confirmed' pour passer à l'état 'progress'" });
+      }
+      
+      rdv.state = "progress";
+      await rdv.save();
+      
+      res.status(200).json({ message: "Rendez-vous mis en cours", rdv });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
+
+router.patch("/rdvs/:id/done", verifyToken, checkRole(["ADMIN", "MECA"]), async (req, res) => {
+  try {
+      const rdv = await RdvModel.findById(req.params.id);
+      
+      if (!rdv) {
+          return res.status(404).json({ error: "Rendez-vous non trouvé" });
+      }
+      
+      if (rdv.state !== "progress" && rdv.state !== "confirmed") {
+          return res.status(400).json({ error: "Le rendez-vous doit être dans l'état 'progress' ou 'confirmé' pour être marqué comme terminé" });
+      }
+      
+      rdv.state = "done";
+      await rdv.save();
+      
+      res.status(200).json({ message: "Rendez-vous terminé", rdv });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
 });
 
 
