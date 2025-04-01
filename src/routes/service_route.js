@@ -21,7 +21,16 @@ router.post("/services",verifyToken, checkRole("ADMIN"), async (req, res) => {
 
 router.get("/services", async (req, res) => {
   try {
-    const services = await ServiceModel.find().populate("category_id");
+    const { category_id, text_search } = req.query;
+    let query = {};
+    if (category_id) {
+      query.category_id = category_id;
+    }
+    if (text_search) {
+      query.name = { $regex: text_search, $options: "i" };
+    }
+
+    const services = await ServiceModel.find(query).populate("category_id");
     res.status(200).json(services);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch services", details: error.message });
