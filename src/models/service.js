@@ -12,7 +12,7 @@ class CategoryServiceModel extends mongoose.model("CategoryService", categorySer
 
         for (const item of jsonData) {
             try {
-                const { id, name, description } = item;
+                const { id, name, description, img } = item;
 
                 if (!name) {
                     results.errors.push({ item, error: "Missing name field" });
@@ -24,13 +24,14 @@ class CategoryServiceModel extends mongoose.model("CategoryService", categorySer
                     if (existingCategory) {
                         existingCategory.name = name;
                         existingCategory.description = description || existingCategory.description;
+                        existingCategory.img = img || existingCategory.img;
                         await existingCategory.save();
                         results.updated++;
                     } else {
                         results.errors.push({ item, error: "Category with given ID not found" });
                     }
                 } else {
-                    await this.create({ name, description });
+                    await this.create({ name, description, img });
                     results.inserted++;
                 }
             } catch (err) {
