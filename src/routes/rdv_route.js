@@ -36,9 +36,18 @@ router.get("/rdvs", verifyToken, checkRole("ADMIN"), async (req, res) => {
     }
 });
 
-router.get("/rdvs/me", verifyToken, checkRole("USER"), async (req, res) => {
+router.get("/my/rdvs", verifyToken, checkRole("USER"), async (req, res) => {
   try {
-      const rdvs = await RdvModel.find({ customer: req.user.userId }).populate("car services");
+      const rdvs = await RdvModel.find({ customer: req.user.userId }).populate({
+        path: "car",
+        populate: {
+          path: "model",
+          populate: {
+            path: "brand"
+          }
+        }
+      })
+      .populate("services");
       res.status(200).json(rdvs);
   } catch (error) {
       res.status(500).json({ error: error.message });
