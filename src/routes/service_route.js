@@ -8,7 +8,8 @@ const XLSX = require('xlsx');
 const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
 const path = require("path");
-const { importExcelWithImages, exportExcelWithImages } = require('../utils/exceljs.service')
+const { importExcelWithImages, exportExcelWithImages } = require('../utils/exceljs.service');
+const PriceServiceModel = require("../models/price_service");
 
 router.post("/services",verifyToken, checkRole("ADMIN"), async (req, res) => {
   try {
@@ -31,7 +32,7 @@ router.get("/services", async (req, res) => {
       query.name = { $regex: text_search, $options: "i" };
     }
 
-    const services = await ServiceModel.find(query).populate("category_id");
+    const services = await ServiceModel.find(query).populate("category_id prices");
     res.status(200).json(services);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch services", details: error.message });
@@ -75,7 +76,10 @@ router.post("/categories", verifyToken, checkRole("ADMIN"), async (req, res) => 
 
 router.get("/categories", async (req, res) => {
   try {
-    const categories = await CategoryServiceModel.find();
+    const categories = await CategoryServiceModel.find().populate({
+      path: "services",
+      populate: { path: "prices" }
+    });
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch categories", details: error.message });
@@ -249,6 +253,44 @@ router.get("/services/:id", async (req, res) => {
     res.status(200).json(service);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch service", details: error.message });
+  }
+});
+
+router.post("/price-service/import", upload.single("file"), async (req, res) => {
+  try {
+      if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const jsonData = importXLSX(req.file.path);
+      const result = await PriceServiceModel.importData(jsonData);
+
+      res.status(200).json({ message: "Import successful", result });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.get("/price-service/export", async (req, res) => {
+  try {
+      const prices = await PriceServiceModel.getAllPrices();
+
+      const exportData = prices.map(price => ({
+          service_name: price.service?.name || "Unknown",
+          model_name: price.model?.name || "Unknown",
+          price: price.price,
+      }));
+
+      const filename = "price_service_data";
+      const filePath = await exportXLSX(exportData, filename, "Prices services")
+
+      res.download(filePath, (filename + ".xlsx"), (err) => {
+          if (err) console.error(err);
+          fs.unlinkSync(filePath);
+      });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
   }
 });
 

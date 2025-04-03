@@ -4,8 +4,21 @@ const categoryServiceSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
     description: { type: String, required: false },
     img: { type: String, required: false },
-  });
+  },
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+    });
 
+categoryServiceSchema.virtual('services', {
+    ref: 'Service',
+    localField: '_id',
+    foreignField: 'category_id'
+});
+
+categoryServiceSchema.virtual('id').get(function () {
+    return this._id.toString();
+});
 class CategoryServiceModel extends mongoose.model("CategoryService", categoryServiceSchema) {
     static async importData(jsonData) {
         const results = { inserted: 0, updated: 0, errors: [] };
@@ -52,7 +65,28 @@ const serviceSchema = new mongoose.Schema({
   img: { type: String, required: false },
   duration: { type: Number, required: true, default: 30 },
   active: { type: Boolean, default: true }
+},
+{
+toJSON: { virtuals: true },
+toObject: { virtuals: true }
 });
+
+serviceSchema.virtual('id').get(function () {
+    return this._id.toString();
+});
+
+serviceSchema.virtual("prices", {
+    ref: "PriceService",
+    localField: "_id",
+    foreignField: "service",
+});
+
+serviceSchema.virtual("min_price").get(function () {
+    if (!this.prices || this.prices.length === 0) {
+      return null;
+    }
+    return Math.min(...this.prices.map(p => p.price));
+  });
 
 class ServiceModel extends mongoose.model("Service", serviceSchema) {
     static async importData(jsonData) {

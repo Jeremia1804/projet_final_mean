@@ -123,7 +123,10 @@ router.get("/cars", verifyToken, checkRole(["ADMIN","MECA", "USER"]), async (req
     if (["ADMIN", "MECA"].includes(req.user.role)) {
       cars = await CarModel.find().populate("owner model");
     } else {
-      cars = await CarModel.find({ owner: req.user.userId }).populate("owner model");
+      cars = await CarModel.find({ owner: req.user.userId }).populate({
+        path: "model",
+        populate: { path: "brand" }
+      });;
     }
     res.json(cars);
   } catch (error) {
