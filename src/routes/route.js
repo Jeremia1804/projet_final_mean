@@ -29,4 +29,9 @@ const router = express.Router();
 //    res.send("VItA")
 // })
 
+router.get("/", async function (req, res){
+    res.setHeader("Content-type", "text/plain")
+    res.send(`Salut tout le monde`)
+})
+
 module.exports = router;
