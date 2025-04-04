@@ -14,15 +14,13 @@ const importXLSX = function(buffer) {
 };
 
 
-const exportXLSX = async function (jsonData, filename = "file", title = "Title"){
+const exportXLSX = async function (jsonData, title = "Title") {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(jsonData);
     XLSX.utils.book_append_sheet(workbook, worksheet, title);
+    const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
 
-    const filePath = path.join(__dirname, `${filename}.xlsx`);
-
-    await XLSX.writeFile(workbook, filePath);
-    return filePath
+    return buffer;
 }
 
 module.exports = { importXLSX, exportXLSX }
