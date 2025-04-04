@@ -2,6 +2,86 @@ const express = require("express");
 const { BrandModel, ModelModel, CarModel } = require("../models/vehicle.js");
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware')
 const router = express.Router();
+const { importXLSX, exportXLSX } = require('../utils/xlsx.service')
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post("/brands/import", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const buffer = req.file.buffer;
+    const jsonData = importXLSX(buffer);
+    const result = await BrandModel.importData(jsonData);
+
+    res.status(200).json({ message: "Import successful", result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.get("/brands/export", async (req, res) => {
+  try {
+    const brands = await BrandModel.find();
+
+    const exportData = brands.map(brand => ({
+      id: brand._id.toString(),
+      name: brand.name,
+      country: brand.country || "",
+      foundedYear: brand.foundedYear || "",
+    }));
+
+    const buffer = await exportXLSX(exportData, "brands_export");
+
+    res.setHeader("Content-Disposition", "attachment; filename=brands_export.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.post("/models/import", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const jsonData = importXLSX(req.file.buffer);
+    const result = await ModelModel.importData(jsonData);
+
+    res.status(200).json({ message: "Import successful", result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/models/export", async (req, res) => {
+  try {
+    const models = await ModelModel.find().populate("brand");
+    const exportData = models.map((model) => ({
+      id: model._id.toString(),
+      name: model.name,
+      brand_name: model.brand?.name || "Unknown",
+      fuelType: model.fuelType,
+      horsepower: model.horsepower,
+      year: model.year,
+    }));
+
+    const buffer = await exportXLSX(exportData, "Models");
+
+    res.setHeader("Content-Disposition", "attachment; filename=models_export.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // CRUD MARQUE (Brand)
 
