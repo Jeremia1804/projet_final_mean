@@ -6,7 +6,7 @@ const { importXLSX, exportXLSX } = require('../utils/xlsx.service')
 const multer = require('multer');
 const XLSX = require('xlsx');
 const fs = require('fs');
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 const path = require("path");
 const { importExcelWithImages, exportExcelWithImages } = require('../utils/exceljs.service');
 const PriceServiceModel = require("../models/price_service");
@@ -116,8 +116,9 @@ router.post('/categories/import', upload.single('file'), async (req, res) => {
         return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const filePath = req.file.path;
-    const jsonData = await importExcelWithImages(filePath, {id: 1, name: 2, description: 3})
+    const buffer = req.file.buffer;
+
+    const jsonData = await importExcelWithImages(buffer, {id: 1, name: 2, description: 3});
 
     const result = await CategoryServiceModel.importData(jsonData);
 
@@ -126,35 +127,32 @@ router.post('/categories/import', upload.single('file'), async (req, res) => {
 
 router.get("/categories/export", async (req, res) => {
   try {
-      const categories = await CategoryServiceModel.find();
+    const categories = await CategoryServiceModel.find();
 
-      if (categories.length === 0) {
-          return res.status(404).json({ error: "No categories found" });
-      }
-      const jsonData = categories.map(cat => ({
-          id: cat._id.toString(),
-          name: cat.name,
-          description: cat.description || "",
-          img: cat.img || "",
-      }));
+    if (categories.length === 0) {
+      return res.status(404).json({ error: "No categories found" });
+    }
 
-      const columnMapping = { id: "id", name: "name", description: "description", img: "img" };
+    const jsonData = categories.map(cat => ({
+      id: cat._id.toString(),
+      name: cat.name,
+      description: cat.description || "",
+      img: cat.img || "",
+    }));
 
-      const filename = "categories_export_jeremia.xlsx"
-      let filePath = await exportExcelWithImages(jsonData, columnMapping)
-      res.download(filePath, filename, (err) => {
-          if (err) {
-              console.error("Error sending file:", err);
-              res.status(500).json({ error: "Failed to send file" });
-          }
+    const columnMapping = { id: "id", name: "name", description: "description", img: "img" };
 
-      fs.unlinkSync(filePath);
-      });
+    const buffer = await exportExcelWithImages(jsonData, columnMapping);
+
+    res.setHeader('Content-Disposition', 'attachment; filename=categories_export_jeremia.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
 
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
+
 
 router.get("/categories/:id", async (req, res) => {
   try {
@@ -174,10 +172,10 @@ router.post('/services/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const filePath = req.file.path;
+  const buffer = req.file.buffer;
 
   try {
-      const jsonData = await importExcelWithImages(filePath, {
+      const jsonData = await importExcelWithImages(buffer, {
           id: 1,
           name: 2,
           category_name: 3,
@@ -193,8 +191,6 @@ router.post('/services/import', upload.single('file'), async (req, res) => {
   } catch (error) {
       console.error("Import error:", error);
       res.status(500).json({ error: "Failed to process file" });
-  } finally {
-      fs.unlinkSync(filePath); // Supprime le fichier après lecture
   }
 });
 
@@ -226,18 +222,11 @@ router.get("/services/export", async (req, res) => {
                               img: "img",
                             };
 
-      const filename = "services_export.xlsx";
-      const filePath = await exportExcelWithImages(jsonData, columnMapping);
+      const buffer = await exportExcelWithImages(jsonData, columnMapping);
 
-      res.download(filePath, filename, (err) => {
-          if (err) {
-              console.error("Error sending file:", err);
-              res.status(500).json({ error: "Failed to send file" });
-          }
-
-          fs.unlinkSync(filePath);
-      });
-
+      res.setHeader('Content-Disposition', 'attachment; filename=services_export_jeremia.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
   } catch (error) {
       console.error("Export error:", error);
       res.status(500).json({ error: error.message });
@@ -262,7 +251,8 @@ router.post("/price-service/import", upload.single("file"), async (req, res) => 
           return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const jsonData = importXLSX(req.file.path);
+      const buffer = req.file.buffer;
+      const jsonData = importXLSX(buffer);
       const result = await PriceServiceModel.importData(jsonData);
 
       res.status(200).json({ message: "Import successful", result });

@@ -4,15 +4,14 @@ const fs = require('fs');
 const path = require("path");
 
 
-const importXLSX = function(filePath){
-    const workbook = XLSX.readFile(filePath);
+const importXLSX = function(buffer) {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-    fs.unlinkSync(filePath);
-    return jsonData
-}
+    return jsonData;
+};
 
 
 const exportXLSX = async function (jsonData, filename = "file", title = "Title"){
