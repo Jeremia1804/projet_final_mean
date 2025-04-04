@@ -272,13 +272,12 @@ router.get("/price-service/export", async (req, res) => {
           price: price.price,
       }));
 
-      const filename = "price_service_data";
-      const filePath = await exportXLSX(exportData, filename, "Prices services")
+      const buffer = await exportXLSX(exportData, "Prices services")
 
-      res.download(filePath, (filename + ".xlsx"), (err) => {
-          if (err) console.error(err);
-          fs.unlinkSync(filePath);
-      });
+      res.setHeader('Content-Disposition', 'attachment; filename=prices_service_export.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+
   } catch (err) {
       res.status(500).json({ error: err.message });
   }
